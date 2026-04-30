@@ -1,0 +1,6 @@
+{
+  "name": "Soundbites",
+  "description": "A retro-gaming inspired soundboard with an inventory-grid UI. Add, organize, and play your favorite game sound clips.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
