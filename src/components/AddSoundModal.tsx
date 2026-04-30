@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Upload, Music, Dice5, Smile } from 'lucide-react';
 import { db } from '../db';
@@ -21,8 +21,12 @@ export default function AddSoundModal({ isOpen, onClose }: AddSoundModalProps) {
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiHiddenInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerOpen = useRef(false);
 
-  const ipcRenderer = (window as any).require?.('electron')?.ipcRenderer;
+  const ipcRenderer = useMemo(() => {
+    try { return (window as any).require('electron')?.ipcRenderer ?? null; }
+    catch { return null; }
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -38,9 +42,22 @@ export default function AddSoundModal({ isOpen, onClose }: AddSoundModalProps) {
     setDisplayedEmojis([...EMOJIS].sort(() => Math.random() - 0.5).slice(0, 8));
   };
 
+  const selectEmoji = (val: string) => {
+    setEmoji(val);
+    setDisplayedEmojis(prev => [val, ...prev.filter(e => e !== val).slice(0, 7)]);
+    if (emojiPickerOpen.current) {
+      ipcRenderer?.send('show-emoji-panel');
+      emojiPickerOpen.current = false;
+    }
+    emojiHiddenInputRef.current?.blur();
+  };
+
   const handleOpenEmojiPicker = () => {
     emojiHiddenInputRef.current?.focus();
-    ipcRenderer?.send('show-emoji-panel');
+    setTimeout(() => {
+      ipcRenderer?.send('show-emoji-panel');
+      emojiPickerOpen.current = true;
+    }, 0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -132,9 +149,13 @@ export default function AddSoundModal({ isOpen, onClose }: AddSoundModalProps) {
                   ref={emojiHiddenInputRef}
                   onChange={(e) => {
                     const val = e.target.value.trim();
-                    if (val) { setEmoji(val); e.target.value = ''; }
+                    if (val) { selectEmoji(val); e.target.value = ''; }
                   }}
-                  className="absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"
+                  onInput={(e) => {
+                    const val = (e.target as HTMLInputElement).value.trim();
+                    if (val) { selectEmoji(val); (e.target as HTMLInputElement).value = ''; }
+                  }}
+                  className="absolute w-px h-px opacity-0 pointer-events-none"
                   tabIndex={-1}
                   aria-hidden="true"
                 />
