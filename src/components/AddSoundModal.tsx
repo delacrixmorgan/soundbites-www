@@ -30,11 +30,14 @@ export default function AddSoundModal({ isOpen, onClose }: AddSoundModalProps) {
 
     setIsUploading(true);
     try {
+      const last = await db.soundbites.orderBy('order').last();
+      const order = (last?.order ?? -1) + 1;
       await db.soundbites.add({
         name,
         emoji,
         audioBlob: file,
         createdAt: Date.now(),
+        order,
       });
       setName('');
       setFile(null);

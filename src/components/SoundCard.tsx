@@ -1,12 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trash2, Music, Volume2 } from 'lucide-react';
+import { Trash2, Music } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { db, type Soundbite } from '../db';
 import { cn } from '../lib/utils';
 
 interface SoundCardProps {
+  id: number;
   sound: Soundbite;
-  key?: React.Key;
+  isOverlay?: boolean;
 }
 
 const PASTELS = [
@@ -17,14 +20,23 @@ const PASTELS = [
   'bg-pastel-purple'
 ];
 
-export default function SoundCard({ sound }: SoundCardProps) {
+export default function SoundCard({ id, sound, isOverlay = false }: SoundCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Assign a color based on the ID for consistency
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
   const colorClass = PASTELS[(sound.id || 0) % PASTELS.length];
 
   const playSound = () => {
+    if (isDragging) return;
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play();
@@ -59,17 +71,30 @@ export default function SoundCard({ sound }: SoundCardProps) {
 
   return (
     <motion.div
+      ref={setNodeRef}
       layout
       onClick={playSound}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
       className={cn(
         "lofi-card aspect-square group p-8 relative flex flex-col items-center justify-center transition-all duration-300",
         isPlaying && "ring-2 ring-lofi-text/10"
       )}
-      whileHover={{ y: -6 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={isDragging ? undefined : { y: -6 }}
+      whileTap={isDragging ? undefined : { scale: 0.98 }}
     >
-      {/* Icon Area */}
-      <div className={cn("w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-4xl mb-6 transition-transform duration-500 group-hover:scale-110", colorClass)}>
+      {/* Drag handle — emoji block */}
+      <div
+        {...attributes}
+        {...listeners}
+        className={cn(
+          "w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-4xl mb-6 transition-transform duration-500 group-hover:scale-110 cursor-grab active:cursor-grabbing",
+          colorClass
+        )}
+      >
         <AnimatePresence mode="wait">
           {isPlaying ? (
             <motion.div
@@ -107,7 +132,7 @@ export default function SoundCard({ sound }: SoundCardProps) {
       {/* Play Progress Dot */}
       <AnimatePresence>
         {isPlaying && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
