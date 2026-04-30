@@ -1,0 +1,57 @@
+# --- Dependencies ---
+node_modules/
+jspm_packages/
+
+# --- Build Outputs & Distribution ---
+dist/
+out/
+build/
+release/
+*.asar
+*.exe
+*.dmg
+*.app
+*.deb
+*.rpm
+
+# --- Logs & Performance ---
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+
+# --- OS & IDE Metadata ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.project
+.settings/
+
+# --- Environment & Secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Large Binary Assets ---
+# (AI can't "read" these, but scanning them consumes tool-use overhead)
+assets/icons/*.ico
+assets/icons/*.icns
+assets/icons/*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.mp4
+*.mp3
+*.wav
+
+# --- Lock Files ---
+# (Optional: Large lock files can eat thousands of tokens if Cline reads them)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

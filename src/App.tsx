@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Coffee, Sparkles, Heart, Settings, Moon, Sun } from 'lucide-react';
+import { Plus, Coffee, Sparkles, Heart, Settings, Moon, Sun, Minimize2, Maximize2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
   DndContext,
@@ -19,11 +19,13 @@ import {
 } from '@dnd-kit/sortable';
 import { db } from './db';
 import SoundCard from './components/SoundCard';
+import CompactCard from './components/CompactCard';
 import AddSoundModal from './components/AddSoundModal';
 import SettingsModal from './components/SettingsModal';
 import { cn } from './lib/utils';
 
 export default function App() {
+  const [isCompact, setIsCompact] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -53,6 +55,25 @@ export default function App() {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
+  const ipcRenderer = (window as any).require?.('electron')?.ipcRenderer;
+  const compactRef = useRef<HTMLDivElement>(null);
+
+  const enterCompact = () => {
+    setIsCompact(true);
+    ipcRenderer?.send('enter-compact', soundbites?.length ?? 0);
+  };
+
+  useLayoutEffect(() => {
+    if (!isCompact || !compactRef.current) return;
+    const h = Math.round(compactRef.current.getBoundingClientRect().height);
+    ipcRenderer?.send('resize-compact', h);
+  }, [isCompact, soundbites]);
+
+  const exitCompact = () => {
+    setIsCompact(false);
+    ipcRenderer?.send('exit-compact');
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as number);
   };
@@ -78,6 +99,35 @@ export default function App() {
     ? soundbites?.find(s => s.id === activeId) ?? null
     : null;
 
+  if (isCompact) {
+    return (
+      <div ref={compactRef} className="group/window relative w-[320px] bg-lofi-bg flex flex-col transition-colors duration-300 drag-region">
+        <div className="h-7 flex-shrink-0 flex items-center justify-end px-2">
+          <button
+            onClick={exitCompact}
+            className="no-drag p-1 rounded-md opacity-0 group-hover/window:opacity-100 transition-opacity"
+          >
+            <Maximize2 className="w-3 h-3 text-lofi-text" />
+          </button>
+        </div>
+
+        <div className={cn('px-3 pb-3 grid gap-2 content-start', (() => {
+            const n = soundbites?.length ?? 0;
+            if (n <= 1) return 'grid-cols-1';
+            if (n === 2) return 'grid-cols-2';
+            if (n === 3) return 'grid-cols-3';
+            if (n % 3 === 0) return 'grid-cols-3';
+            if (n % 2 === 0) return 'grid-cols-2';
+            return 'grid-cols-3';
+          })())}>
+          {soundbites?.map(sound => (
+            <CompactCard key={sound.id} sound={sound} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-lofi-bg relative overflow-hidden transition-colors duration-300">
       {/* Soft Background Accents */}
@@ -98,6 +148,13 @@ export default function App() {
               className="no-drag p-3 bg-white dark:bg-lofi-surface rounded-full border border-lofi-border shadow-sm hover:scale-110 active:scale-95 transition-all text-lofi-text"
             >
               <Settings className="w-5 h-5" />
+            </button>
+            <button
+              onClick={enterCompact}
+              className="no-drag p-3 bg-white dark:bg-lofi-surface rounded-full border border-lofi-border shadow-sm hover:scale-110 active:scale-95 transition-all text-lofi-text"
+              title="Compact mode"
+            >
+              <Minimize2 className="w-5 h-5" />
             </button>
           </div>
 

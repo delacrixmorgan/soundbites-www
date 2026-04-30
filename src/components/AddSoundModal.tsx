@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Upload, Music, Dice5 } from 'lucide-react';
+import { X, Upload, Music, Dice5, Smile } from 'lucide-react';
 import { db } from '../db';
 import { cn } from '../lib/utils';
 
@@ -16,12 +16,31 @@ export default function AddSoundModal({ isOpen, onClose }: AddSoundModalProps) {
   const [emoji, setEmoji] = useState(EMOJIS[0]);
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [displayedEmojis, setDisplayedEmojis] = useState(() =>
+    [...EMOJIS].sort(() => Math.random() - 0.5).slice(0, 8)
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiHiddenInputRef = useRef<HTMLInputElement>(null);
+
+  const ipcRenderer = (window as any).require?.('electron')?.ipcRenderer;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const picked = e.target.files[0];
+      setFile(picked);
+      if (!name) {
+        setName(picked.name.replace(/\.[^/.]+$/, ''));
+      }
     }
+  };
+
+  const randomizeEmojis = () => {
+    setDisplayedEmojis([...EMOJIS].sort(() => Math.random() - 0.5).slice(0, 8));
+  };
+
+  const handleOpenEmojiPicker = () => {
+    emojiHiddenInputRef.current?.focus();
+    ipcRenderer?.send('show-emoji-panel');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,6 +61,7 @@ export default function AddSoundModal({ isOpen, onClose }: AddSoundModalProps) {
       setName('');
       setFile(null);
       setEmoji(EMOJIS[0]);
+      setDisplayedEmojis([...EMOJIS].sort(() => Math.random() - 0.5).slice(0, 8));
       onClose();
     } catch (error) {
       console.error('Failed to add soundbite:', error);
@@ -53,7 +73,7 @@ export default function AddSoundModal({ isOpen, onClose }: AddSoundModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 no-drag">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -87,9 +107,39 @@ export default function AddSoundModal({ isOpen, onClose }: AddSoundModalProps) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] text-lofi-muted uppercase tracking-[0.2em] font-bold pl-1 italic">Identifier</label>
+                <div className="flex items-center justify-between pl-1">
+                  <label className="text-[10px] text-lofi-muted uppercase tracking-[0.2em] font-bold italic">Identifier</label>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={randomizeEmojis}
+                      title="Randomise"
+                      className="p-1.5 rounded-lg text-lofi-muted hover:text-lofi-text hover:bg-lofi-bg transition-all"
+                    >
+                      <Dice5 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenEmojiPicker}
+                      title="Open emoji picker"
+                      className="p-1.5 rounded-lg text-lofi-muted hover:text-lofi-text hover:bg-lofi-bg transition-all"
+                    >
+                      <Smile className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <input
+                  ref={emojiHiddenInputRef}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    if (val) { setEmoji(val); e.target.value = ''; }
+                  }}
+                  className="absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                />
                 <div className="grid grid-cols-4 gap-2 p-3 bg-lofi-bg rounded-2xl">
-                  {EMOJIS.slice(0, 8).map((e) => (
+                  {displayedEmojis.map((e) => (
                     <button
                       key={e}
                       type="button"
